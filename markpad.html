@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MarkPad — Markdown Editor Online Gratis</title>
+<meta name="description" content="Editor Markdown online dengan live preview. Tulis, lihat hasil real-time, unduh .md atau .html. Gratis, tanpa login, jalan di browser." />
+<style>
+  :root{
+    --bg:#ffffff; --panel:#f7f8fa; --ink:#1f2430; --muted:#6b7280;
+    --line:#e5e7eb; --brand:#6d5efc; --brand-d:#5847e0; --code-bg:#f3f4f6;
+  }
+  [data-theme="dark"]{
+    --bg:#1a1c23; --panel:#23262f; --ink:#e6e8ee; --muted:#9aa0ac;
+    --line:#333845; --brand:#8b7dff; --brand-d:#7669f0; --code-bg:#2a2e38;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+
+  /* TOPBAR */
+  .top{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+  .brand{font-weight:800;font-size:18px;display:flex;align-items:center;gap:8px;margin-right:8px}
+  .brand .dot{color:var(--brand)}
+  .spacer{flex:1}
+  .tbtn{padding:8px 12px;border-radius:8px;font-size:13px;font-weight:600;color:var(--muted);transition:.15s}
+  .tbtn:hover{background:var(--bg);color:var(--ink)}
+  .tbtn.primary{background:var(--brand);color:#fff}
+  .tbtn.primary:hover{background:var(--brand-d)}
+
+  /* TOOLBAR */
+  .toolbar{display:flex;align-items:center;gap:2px;padding:6px 12px;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+  .toolbar button{width:36px;height:34px;border-radius:7px;color:var(--muted);font-size:15px;display:flex;align-items:center;justify-content:center;transition:.15s}
+  .toolbar button:hover{background:var(--bg);color:var(--ink)}
+  .toolbar button b{font-family:Georgia,serif}
+  .sep{width:1px;height:22px;background:var(--line);margin:0 6px}
+
+  /* MAIN */
+  .main{flex:1;display:flex;min-height:0}
+  .pane{flex:1;display:flex;flex-direction:column;min-width:0}
+  .pane-head{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:8px 18px;border-bottom:1px solid var(--line);background:var(--panel)}
+  #editor{flex:1;width:100%;resize:none;border:none;outline:none;padding:22px;font-family:"SF Mono",Menlo,Consolas,monospace;font-size:15px;line-height:1.7;background:var(--bg);color:var(--ink);tab-size:2}
+  .divider{width:1px;background:var(--line)}
+  #preview{flex:1;overflow-y:auto;padding:22px 30px;line-height:1.7}
+
+  /* PREVIEW MARKDOWN STYLES */
+  #preview h1{font-size:30px;margin:18px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+  #preview h2{font-size:24px;margin:18px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+  #preview h3{font-size:20px;margin:16px 0 8px}
+  #preview h4{font-size:17px;margin:14px 0 6px}
+  #preview p{margin:10px 0}
+  #preview ul,#preview ol{margin:10px 0 10px 26px}
+  #preview li{margin:4px 0}
+  #preview a{color:var(--brand);text-decoration:none}
+  #preview a:hover{text-decoration:underline}
+  #preview code{background:var(--code-bg);padding:2px 6px;border-radius:5px;font-family:"SF Mono",Menlo,Consolas,monospace;font-size:.9em}
+  #preview pre{background:var(--code-bg);padding:14px 16px;border-radius:10px;overflow-x:auto;margin:12px 0}
+  #preview pre code{background:none;padding:0}
+  #preview blockquote{border-left:4px solid var(--brand);padding:4px 16px;margin:12px 0;color:var(--muted);background:var(--panel);border-radius:0 8px 8px 0}
+  #preview hr{border:none;border-top:1px solid var(--line);margin:20px 0}
+  #preview img{max-width:100%;border-radius:8px;margin:10px 0}
+  #preview table{border-collapse:collapse;margin:12px 0;width:100%}
+  #preview th,#preview td{border:1px solid var(--line);padding:8px 12px;text-align:left}
+  #preview th{background:var(--panel);font-weight:700}
+  #preview input[type=checkbox]{margin-right:8px}
+
+  /* STATUS BAR */
+  .status{display:flex;align-items:center;gap:18px;padding:7px 18px;border-top:1px solid var(--line);background:var(--panel);font-size:12px;color:var(--muted)}
+  .status .saved{margin-left:auto;color:var(--brand);font-weight:600}
+
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--ink);color:var(--bg);padding:11px 22px;border-radius:10px;font-size:14px;font-weight:600;opacity:0;transition:.3s;z-index:99}
+  .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+
+  @media(max-width:760px){
+    .main{flex-direction:column}
+    .divider{width:auto;height:1px}
+    .pane-head{padding:6px 14px}
+    .hide-sm{display:none}
+  }
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="brand">📝 MarkPad<span class="dot">.</span></div>
+  <button class="tbtn" id="btnSample">Contoh</button>
+  <button class="tbtn" id="btnClear">Bersihkan</button>
+  <div class="spacer"></div>
+  <button class="tbtn" id="btnCopy">Copy HTML</button>
+  <button class="tbtn" id="btnDlMd">⬇ .md</button>
+  <button class="tbtn" id="btnDlHtml">⬇ .html</button>
+  <button class="tbtn" id="btnTheme">🌙</button>
+  <a class="tbtn primary" href="https://github.com/vhmns14" target="_blank" rel="noopener">⭐ GitHub</a>
+</div>
+
+<div class="toolbar" id="toolbar">
+  <button data-md="h" title="Heading">H</button>
+  <button data-md="b" title="Bold"><b>B</b></button>
+  <button data-md="i" title="Italic"><b><i>I</i></b></button>
+  <button data-md="s" title="Strikethrough"><b><s>S</s></b></button>
+  <div class="sep"></div>
+  <button data-md="ul" title="Bullet list">• ≡</button>
+  <button data-md="ol" title="Numbered list">1.</button>
+  <button data-md="task" title="Checklist">☑</button>
+  <button data-md="quote" title="Quote">❝</button>
+  <div class="sep"></div>
+  <button data-md="link" title="Link">🔗</button>
+  <button data-md="img" title="Image">🖼</button>
+  <button data-md="code" title="Inline code">‹›</button>
+  <button data-md="block" title="Code block">{ }</button>
+  <button data-md="table" title="Table">▦</button>
+  <button data-md="hr" title="Divider">―</button>
+</div>
+
+<div class="main">
+  <div class="pane">
+    <div class="pane-head">✍️ Editor — Markdown</div>
+    <textarea id="editor" placeholder="Tulis markdown di sini..." spellcheck="false"></textarea>
+  </div>
+  <div class="divider"></div>
+  <div class="pane">
+    <div class="pane-head">👁 Preview — Hasil</div>
+    <div id="preview"></div>
+  </div>
+</div>
+
+<div class="status">
+  <span id="words">0 kata</span>
+  <span id="chars">0 karakter</span>
+  <span id="lines">0 baris</span>
+  <a href="https://github.com/vhmns14" target="_blank" rel="noopener" style="color:var(--muted);text-decoration:none">dibuat oleh @vhmns14</a>
+  <span class="saved" id="saved">Tersimpan otomatis ✓</span>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================
+   MARKDOWN PARSER (ditulis sendiri — no library, jalan offline)
+   Dukung: heading, bold, italic, strikethrough, inline+block code,
+   link, image, list (ul/ol), checklist, blockquote, hr, table.
+   ========================================================= */
+function escapeHtml(s){
+  return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+function inline(t){
+  // gambar dulu sebelum link
+  t = t.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g,'<img src="$2" alt="$1">');
+  t = t.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+  t = t.replace(/`([^`]+)`/g,'<code>$1</code>');
+  t = t.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+  t = t.replace(/__([^_]+)__/g,'<strong>$1</strong>');
+  t = t.replace(/(^|[^*])\*([^*]+)\*/g,'$1<em>$2</em>');
+  t = t.replace(/(^|[^_])_([^_]+)_/g,'$1<em>$2</em>');
+  t = t.replace(/~~([^~]+)~~/g,'<del>$1</del>');
+  return t;
+}
+function parse(src){
+  const lines = src.replace(/\r\n/g,"\n").split("\n");
+  let html="", i=0;
+  const para=[];
+  const flushPara=()=>{ if(para.length){ html+="<p>"+para.map(inline).join("<br>")+"</p>"; para.length=0; } };
+
+  while(i<lines.length){
+    let line = lines[i];
+    const raw = escapeHtml(line);
+
+    // code block ```
+    if(/^```/.test(line)){
+      flushPara();
+      i++; let code="";
+      while(i<lines.length && !/^```/.test(lines[i])){ code+=escapeHtml(lines[i])+"\n"; i++; }
+      i++; html+="<pre><code>"+code.replace(/\n$/,"")+"</code></pre>"; continue;
+    }
+    // hr
+    if(/^(\s*[-*_]){3,}\s*$/.test(line)){ flushPara(); html+="<hr>"; i++; continue; }
+    // heading
+    let h = raw.match(/^(#{1,6})\s+(.*)$/);
+    if(h){ flushPara(); const lv=h[1].length; html+="<h"+lv+">"+inline(h[2])+"</h"+lv+">"; i++; continue; }
+    // blockquote (gabung berturut)
+    if(/^>\s?/.test(line)){
+      flushPara(); let q=[];
+      while(i<lines.length && /^>\s?/.test(lines[i])){ q.push(escapeHtml(lines[i].replace(/^>\s?/,""))); i++; }
+      html+="<blockquote>"+q.map(inline).join("<br>")+"</blockquote>"; continue;
+    }
+    // table (baris | ... | diikuti baris pemisah ---)
+    if(/^\s*\|(.+)\|\s*$/.test(line) && i+1<lines.length && /^\s*\|?[\s:|-]+\|?\s*$/.test(lines[i+1]) && lines[i+1].includes("-")){
+      flushPara();
+      const cells = r => r.replace(/^\s*\|/,"").replace(/\|\s*$/,"").split("|").map(c=>c.trim());
+      const head = cells(lines[i]); i+=2;
+      html+="<table><thead><tr>"+head.map(c=>"<th>"+inline(escapeHtml(c))+"</th>").join("")+"</tr></thead><tbody>";
+      while(i<lines.length && /^\s*\|(.+)\|\s*$/.test(lines[i])){
+        html+="<tr>"+cells(lines[i]).map(c=>"<td>"+inline(escapeHtml(c))+"</td>").join("")+"</tr>"; i++;
+      }
+      html+="</tbody></table>"; continue;
+    }
+    // checklist
+    if(/^\s*[-*]\s+\[([ xX])\]\s+/.test(line)){
+      flushPara(); html+="<ul style='list-style:none;margin-left:8px'>";
+      while(i<lines.length && /^\s*[-*]\s+\[([ xX])\]\s+/.test(lines[i])){
+        const m=lines[i].match(/^\s*[-*]\s+\[([ xX])\]\s+(.*)$/);
+        const ck=m[1].toLowerCase()==="x"?"checked":"";
+        html+="<li><input type='checkbox' disabled "+ck+">"+inline(escapeHtml(m[2]))+"</li>"; i++;
+      }
+      html+="</ul>"; continue;
+    }
+    // unordered list
+    if(/^\s*[-*+]\s+/.test(line)){
+      flushPara(); html+="<ul>";
+      while(i<lines.length && /^\s*[-*+]\s+/.test(lines[i])){
+        html+="<li>"+inline(escapeHtml(lines[i].replace(/^\s*[-*+]\s+/,"")))+"</li>"; i++;
+      }
+      html+="</ul>"; continue;
+    }
+    // ordered list
+    if(/^\s*\d+\.\s+/.test(line)){
+      flushPara(); html+="<ol>";
+      while(i<lines.length && /^\s*\d+\.\s+/.test(lines[i])){
+        html+="<li>"+inline(escapeHtml(lines[i].replace(/^\s*\d+\.\s+/,"")))+"</li>"; i++;
+      }
+      html+="</ol>"; continue;
+    }
+    // blank line
+    if(line.trim()===""){ flushPara(); i++; continue; }
+    // paragraph
+    para.push(raw); i++;
+  }
+  flushPara();
+  return html;
+}
+
+/* ============ ELEMEN & RENDER ============ */
+const editor=document.getElementById("editor");
+const preview=document.getElementById("preview");
+const KEY="markpad_content";
+
+function render(){
+  preview.innerHTML=parse(editor.value);
+  const txt=editor.value.trim();
+  document.getElementById("words").textContent=(txt?txt.split(/\s+/).length:0)+" kata";
+  document.getElementById("chars").textContent=editor.value.length+" karakter";
+  document.getElementById("lines").textContent=editor.value.split("\n").length+" baris";
+  localStorage.setItem(KEY,editor.value);
+}
+editor.addEventListener("input",render);
+
+/* ============ TOOLBAR ============ */
+function wrap(before,after){
+  const s=editor.selectionStart,e=editor.selectionEnd,v=editor.value;
+  const sel=v.slice(s,e)||"teks";
+  editor.value=v.slice(0,s)+before+sel+after+v.slice(e);
+  editor.focus();
+  editor.selectionStart=s+before.length; editor.selectionEnd=s+before.length+sel.length;
+  render();
+}
+function prefix(p){
+  const s=editor.selectionStart,v=editor.value;
+  const lineStart=v.lastIndexOf("\n",s-1)+1;
+  editor.value=v.slice(0,lineStart)+p+v.slice(lineStart);
+  editor.focus(); editor.selectionStart=editor.selectionEnd=s+p.length; render();
+}
+function insert(text){
+  const s=editor.selectionStart,v=editor.value;
+  editor.value=v.slice(0,s)+text+v.slice(s);
+  editor.focus(); editor.selectionStart=editor.selectionEnd=s+text.length; render();
+}
+document.getElementById("toolbar").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b)return;
+  switch(b.dataset.md){
+    case"h":prefix("## ");break;
+    case"b":wrap("**","**");break;
+    case"i":wrap("*","*");break;
+    case"s":wrap("~~","~~");break;
+    case"ul":prefix("- ");break;
+    case"ol":prefix("1. ");break;
+    case"task":prefix("- [ ] ");break;
+    case"quote":prefix("> ");break;
+    case"link":wrap("[","](https://)");break;
+    case"img":wrap("![","](https://)");break;
+    case"code":wrap("`","`");break;
+    case"block":insert("\n```\nkode di sini\n```\n");break;
+    case"table":insert("\n| Kolom 1 | Kolom 2 |\n| --- | --- |\n| isi | isi |\n");break;
+    case"hr":insert("\n---\n");break;
+  }
+});
+
+/* keyboard shortcut: Ctrl/Cmd+B, +I */
+editor.addEventListener("keydown",e=>{
+  if(e.ctrlKey||e.metaKey){
+    if(e.key==="b"){e.preventDefault();wrap("**","**");}
+    if(e.key==="i"){e.preventDefault();wrap("*","*");}
+  }
+  if(e.key==="Tab"){e.preventDefault();insert("  ");}
+});
+
+/* ============ TOMBOL ATAS ============ */
+function toast(msg){
+  const t=document.getElementById("toast");
+  t.textContent=msg; t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"),1800);
+}
+function download(name,content,type){
+  const blob=new Blob([content],{type});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob); a.download=name; a.click();
+  URL.revokeObjectURL(a.href);
+}
+document.getElementById("btnDlMd").onclick=()=>{download("dokumen.md",editor.value,"text/markdown");toast("File .md diunduh ⬇");};
+document.getElementById("btnDlHtml").onclick=()=>{
+  const full=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Dokumen</title><style>body{font-family:system-ui,sans-serif;max-width:760px;margin:40px auto;padding:0 20px;line-height:1.7;color:#222}code{background:#f3f4f6;padding:2px 6px;border-radius:4px}pre{background:#f3f4f6;padding:14px;border-radius:8px;overflow:auto}blockquote{border-left:4px solid #6d5efc;padding-left:16px;color:#666;margin-left:0}table{border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px 12px}img{max-width:100%}</style></head><body>\n${parse(editor.value)}\n</body></html>`;
+  download("dokumen.html",full,"text/html");toast("File .html diunduh ⬇");
+};
+document.getElementById("btnCopy").onclick=async()=>{
+  try{await navigator.clipboard.writeText(parse(editor.value));toast("HTML disalin ke clipboard 📋");}
+  catch{toast("Gagal menyalin");}
+};
+document.getElementById("btnClear").onclick=()=>{
+  if(confirm("Hapus semua tulisan?")){editor.value="";render();editor.focus();}
+};
+
+/* tema */
+const btnTheme=document.getElementById("btnTheme");
+function setTheme(t){
+  document.documentElement.setAttribute("data-theme",t);
+  btnTheme.textContent=t==="dark"?"☀️":"🌙";
+  localStorage.setItem("markpad_theme",t);
+}
+btnTheme.onclick=()=>setTheme(document.documentElement.getAttribute("data-theme")==="dark"?"light":"dark");
+
+/* contoh */
+const SAMPLE=`# Selamat Datang di MarkPad 👋
+
+Ini editor **Markdown** dengan _live preview_. Coba edit teks ini!
+
+## Fitur
+
+- ✅ Live preview real-time
+- ✅ Simpan otomatis di browser
+- ✅ Download .md & .html
+- [x] Mode gelap
+- [ ] (coba centang lewat \`- [x]\`)
+
+## Contoh Format
+
+Teks **tebal**, _miring_, ~~coret~~, dan \`kode inline\`.
+
+> Kutipan terlihat seperti ini.
+
+### Kode
+
+\`\`\`
+function halo(nama){
+  return "Halo, " + nama;
+}
+\`\`\`
+
+### Tautan & Gambar
+
+[Kunjungi Google](https://google.com)
+
+### Tabel
+
+| Bahasa | Level |
+| --- | --- |
+| HTML | Mudah |
+| JavaScript | Menengah |
+
+---
+
+Dibuat oleh [@vhmns14](https://github.com/vhmns14) · Selamat menulis! 🚀`;
+document.getElementById("btnSample").onclick=()=>{editor.value=SAMPLE;render();};
+
+/* ============ INIT ============ */
+setTheme(localStorage.getItem("markpad_theme")||"light");
+editor.value=localStorage.getItem(KEY)||SAMPLE;
+render();
+</script>
+</body>
+</html>
